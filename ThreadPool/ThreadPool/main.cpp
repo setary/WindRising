@@ -40,18 +40,20 @@ public:
     }
     void wait_and_pop(T& tvalue){
         unique_lock<mutex> lk(mut);
-        cond.wait(lk, [this]{ return this->empty();});
-        tvalue = move(data.pop_front());
+        cond.wait(lk, [this]{ return !data.empty();});
+        tvalue = move(data.front());
+        data.pop_front();
     }
     shared_ptr<T> wait_and_pop(){
         unique_lock<mutex> lk(mut);
-        cond.wait(lk, [this]{return this->empty();});
-        shared_ptr<T> ret = make_shared<T>(data.pop_front());
+        cond.wait(lk, [this]{return !data.empty();});
+        shared_ptr<T> ret = make_shared<T>(data.front());
+        data.pop_front();
         return ret;
     }
     bool try_pop(T& tvalue){
         lock_guard<mutex> lk(mut);
-        if(empty())
+        if(data.empty())
             return false;
         tvalue = data.front();
         data.pop_front();
@@ -59,13 +61,9 @@ public:
     }
     shared_ptr<T> try_pop(){
         lock_guard<mutex> lk(mut);
-        if(empty())
+        if(data.empty())
             return make_shared<T>();
         return make_shared<T>(move(data.pop_front()));
-    }
-    bool empty(){
-        lock_guard<mutex> lk(mut);
-        return data.empty();
     }
 };
 
@@ -94,11 +92,13 @@ private:
         try{
             while(!done){
                 function<void()> task;
-                if(task_queue.try_pop(task)){
+                task_queue.wait_and_pop(task);
+                task();
+                /*if(task_queue.try_pop(task)){
                     task();
                 }else{
                     this_thread::yield();
-                }
+                }*/
             }
         }catch(...){
             cout<<"there occurs an error"<<endl;
@@ -121,30 +121,33 @@ public:
     }
 };
 
-deque<int> vec;
+vector<int> vec = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+void task1(){
+    for(int i = 0; i < vec.size(); i++){
+        vec[i] += 1;
+        cout<<"task1: "<<vec[i]<<endl;
+    }
+}
 
 void task2(){
-    int i = 0;
-    while(true){
-        if(i > 10) i = 0;
-        vec.push_back(i);
-        cout<<"task2: "<<i<<endl;
-        i++;
+    for(int i = 0; i < vec.size(); i++){
+        vec[i] += 1;
+        cout<<"task2: "<<vec[i]<<endl;
     }
 }
 
 void task3(){
-    while(!vec.empty()){
-        int x = vec.front();
-        vec.pop_front();
-        cout<<"task3: "<<x<<endl;
-        sleep(1);
+    for(int i = 0; i < vec.size(); i++){
+        vec[i] += 1;
+        cout<<"task3: "<<vec[i]<<endl;
     }
 }
 
 int main(int argc, const char * argv[]) {
     // insert code here...
     ThreadPool pool;
+    pool.submit(task1);
     pool.submit(task2);
     pool.submit(task3);
     sleep(10000);
