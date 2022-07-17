@@ -63,17 +63,21 @@ public:
     unique_ptr(_Dp _d):_M_t(){
         _M_t.get_deleter() = _d;
     }
-    
     unique_ptr(pointer _p, _Dp _d):_M_t(){
         _M_t.M_ptr() = _p;
         _M_t.get_deleter() = _d;
     }
+    unique_ptr(unique_ptr&& u):_M_t(u.release(), u.get_deleter()){}
     unique_ptr(unique_ptr<_Tp, _Dp>& u) = delete;
     ~unique_ptr(){
         if(_M_t.M_ptr() != nullptr){
             _M_t.get_deleter()(_M_t.M_ptr());
             _M_t.M_ptr() = nullptr;
         }
+    }
+    bool operator =(unique_ptr<_Tp, _Dp>&& u){
+        _M_t.M_ptr() = u.release();
+        _M_t.get_deleter() = u.get_deleter();
     }
     bool operator =(unique_ptr<_Tp, _Dp>& u) = delete;
     operator bool(){
