@@ -9,5 +9,11 @@
 #define pool_hpp
 
 #include <stdio.h>
+#include "simple_segregated_storage.hpp"
+
+template<UserAllocate>
+class pool{
+    
+};
 
 #endif /* pool_hpp */
